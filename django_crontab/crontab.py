@@ -75,7 +75,7 @@ class Crontab(object):
         # take all jobs specified in settings
         for job in self.settings.CRONJOBS:
             # differ format and find job's suffix
-            if job[1] == jobname:
+            if str(job[1]).endswith(jobname):
                 print(f" adding job : {jobname}")
                 pass
             else:
