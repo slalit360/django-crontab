@@ -68,6 +68,47 @@ class Crontab(object):
         # delete the temporary file
         os.unlink(path)
 
+    def add_job(self, jobname):
+        """
+        Adds all jobs defined in CRONJOBS setting to internal buffer
+        """
+        # take all jobs specified in settings
+        for job in self.settings.CRONJOBS:
+            # differ format and find job's suffix
+            if job[1] == jobname:
+                print(f" adding job : {jobname}")
+                pass
+            else:
+                continue
+
+            if len(job) > 2 and isinstance(job[2], string_type):
+                # format 1 job
+                job_suffix = job[2]
+            elif len(job) > 4:
+                job_suffix = job[4]
+            else:
+                job_suffix = ''
+
+            # format the job into crontab syntax using the format string and relevant variables as specified in settings
+            # and append it to the internal buffer
+            self.crontab_lines.append(self.settings.CRONTAB_LINE_PATTERN % {
+                'time': job[0],
+                'comment': self.settings.CRONTAB_COMMENT,
+                'command': ' '.join(filter(None, [
+                    self.settings.COMMAND_PREFIX,
+                    self.settings.PYTHON_EXECUTABLE,
+                    self.settings.DJANGO_MANAGE_PATH,
+                    'crontab', 'run',
+                    self.__hash_job(job),
+                    '--settings=%s' % self.settings.DJANGO_SETTINGS_MODULE if self.settings.DJANGO_SETTINGS_MODULE else '',
+                    job_suffix,
+                    self.settings.COMMAND_SUFFIX
+                ]))
+            })
+            # output the action if the verbose option is specified
+            if self.verbosity >= 1:
+                print('  adding cronjob: (%s) -> %s' % (self.__hash_job(job), job))
+
     def add_jobs(self):
         """
         Adds all jobs defined in CRONJOBS setting to internal buffer
@@ -117,6 +158,32 @@ class Crontab(object):
                 # output the job hash and details if the verbose option is specified
                 if self.verbosity >= 1:
                     print(u'%s -> %s' % (
+                        job[0][2].split()[4],
+                        self.__get_job_by_hash(job[0][2][job[0][2].find('crontab run') + 12:].split()[0])
+                    ))
+
+    def remove_job(self, jobname):
+        """
+        Removes all jobs defined in CRONJOBS setting from internal buffer
+        """
+        # iterate through all the lines in the internal buffer
+        for line in self.crontab_lines[:]:
+            # check if the line describes a crontab job
+            job = self.settings.CRONTAB_LINE_REGEXP.findall(line)
+            # if the job is generated using django_crontab for this application
+            if job and job[0][4] == self.settings.CRONTAB_COMMENT:
+
+                if str(self.__get_job_by_hash(str(job[0][2]).split()[4])[1]).endswith(jobname):
+                    print(f" adding job : {jobname}")
+                    pass
+                else:
+                    continue
+
+                # remove the line from the internal buffer
+                self.crontab_lines.remove(line)
+                # output the action if the verbose option is specified
+                if self.verbosity >= 1:
+                    print('removing cronjob: (%s) -> %s' % (
                         job[0][2].split()[4],
                         self.__get_job_by_hash(job[0][2][job[0][2].find('crontab run') + 12:].split()[0])
                     ))

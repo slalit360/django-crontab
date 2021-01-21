@@ -13,8 +13,9 @@ class Command(BaseCommand):
     help = 'run this command to add, show or remove the jobs defined in CRONJOBS setting from/to crontab'
 
     def add_arguments(self, parser):
-        parser.add_argument('subcommand', choices=['add', 'show', 'remove', 'run'])
+        parser.add_argument('subcommand', choices=['add', 'add_job', 'show', 'remove', 'remove_job', 'run'])
         parser.add_argument('jobhash', nargs='?')
+        parser.add_argument('jobname', nargs='?')
 
     def handle(self, *args, **options):
         """
@@ -24,10 +25,17 @@ class Command(BaseCommand):
             with Crontab(**options) as crontab:    # initialize a Crontab class with any specified options
                 crontab.remove_jobs()              # remove all jobs specified in settings from the crontab
                 crontab.add_jobs()                 # and add them back
+        elif options['subcommand'] == 'add_job':    # addone command
+            with Crontab(**options) as crontab:    # initialize a Crontab class with any specified options
+                crontab.remove_job(options['jobname'])                # remove one jobs specified in settings from the crontab
+                crontab.add_job(options['jobname'])                 # and add them back
         elif options['subcommand'] == 'show':      # show command
             # initialize a readonly Crontab class with any specified options
             with Crontab(readonly=True, **options) as crontab:
                 crontab.show_jobs()                # list all currently active jobs from crontab
+        elif options['subcommand'] == 'remove_job':    # remove command
+            with Crontab(**options) as crontab:    # initialize a Crontab class with any specified options
+                crontab.add_job(options['jobname'])            # remove all jobs specified in settings from the crontab
         elif options['subcommand'] == 'remove':    # remove command
             with Crontab(**options) as crontab:    # initialize a Crontab class with any specified options
                 crontab.remove_jobs()              # remove all jobs specified in settings from the crontab
